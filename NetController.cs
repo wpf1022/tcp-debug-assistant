@@ -198,22 +198,30 @@ namespace TcpDebugAssistant
         public event Action<ClientSession> ClientConnected;
         public event Action<ClientSession> ClientDisconnected;
         public bool IsListening => _listener != null;
+        public string ListeningEndpoint { get; private set; } = "-";
 
-        public async Task StartAsync(int port)
+        public Task StartAsync(int port) => StartAsync(IPAddress.Any, port);
+
+        /// <summary>在指定地址上监听（IPAddress.Any = 0.0.0.0 全部网卡）。</summary>
+        public async Task<bool> StartAsync(IPAddress address, int port)
         {
             await StopAsync();
             _cts = new CancellationTokenSource();
             try
             {
-                _listener = new TcpListener(IPAddress.Any, port);
+                _listener = new TcpListener(address, port);
                 _listener.Start();
-                RaiseState($"监听中：0.0.0.0:{port}", false);
+                ListeningEndpoint = $"{address}:{port}";
+                RaiseState($"监听中：{ListeningEndpoint}", false);
                 _ = AcceptLoop(_cts.Token);
+                return true;
             }
             catch (Exception ex)
             {
                 RaiseState("监听失败：" + ex.Message, true);
                 _listener = null;
+                ListeningEndpoint = "-";
+                return false;
             }
         }
 
@@ -296,12 +304,14 @@ namespace TcpDebugAssistant
 
         public async Task StopAsync()
         {
+            bool wasListening = _listener != null;
             try { _cts?.Cancel(); } catch { }
             ClientSession[] snapshot;
             lock (_lock) snapshot = Sessions.ToArray();
             foreach (var s in snapshot) RemoveSession(s, "服务端已停止");
             try { _listener?.Stop(); } catch { }
             _listener = null;
+            if (wasListening) RaiseState($"已停止监听 {ListeningEndpoint}", false);
             await Task.Yield();
         }
 

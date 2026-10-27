@@ -2,40 +2,45 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Windows.Forms;
 
 namespace TcpDebugAssistant
 {
     /// <summary>
-    /// 设计系统（来源：ui-ux-pro-max · Developer Tool / Industrial-Utility · 调色板 #97）
-    /// 正文/背景对比度 16.2:1（WCAG AA 要求 4.5:1）。
+    /// 设计系统（来源：ui-ux-pro-max · Luxury/Premium 黑金轻奢 · 调色板 #51 Premium Analogous 051）
+    /// 香槟金主操作 + 暖黑背景，正文/背景对比度 &gt; 14:1（WCAG AA 要求 4.5:1）。
     /// </summary>
     internal static class Theme
     {
-        public static readonly Color Bg        = Color.FromArgb(0x12, 0x12, 0x1C); // #12121C 页面背景
-        public static readonly Color Surface   = Color.FromArgb(0x1B, 0x1B, 0x2C); // #1B1B2C 面板
-        public static readonly Color Surface2  = Color.FromArgb(0x22, 0x22, 0x36); // #222236 控件/选中
-        public static readonly Color Border    = Color.FromArgb(0x2D, 0x2C, 0x4E); // #2D2C4E 边框
-        public static readonly Color Text      = Color.FromArgb(0xED, 0xEF, 0xF3); // #EDEFF3 主文本
-        public static readonly Color Muted     = Color.FromArgb(0x9A, 0x9D, 0xB3); // 次级文本
-        public static readonly Color Primary   = Color.FromArgb(0x76, 0x75, 0xC7); // #7675C7 主操作
-        public static readonly Color PrimaryHi = Color.FromArgb(0x86, 0x85, 0xD4); // 悬停
-        public static readonly Color Danger    = Color.FromArgb(0xC7, 0x57, 0x57); // 危险操作
-        public static readonly Color DangerHi  = Color.FromArgb(0xD4, 0x6A, 0x6A);
-        public static readonly Color Ok        = Color.FromArgb(0x58, 0xE4, 0x81); // 就绪/成功
-        public static readonly Color Warn      = Color.FromArgb(0xE2, 0xB9, 0x3B); // 警告/错误提示
-        public static readonly Color LogBg     = Color.FromArgb(0x0E, 0x0E, 0x16); // 日志终端底
-        public static readonly Color Sent      = Color.FromArgb(0xA5, 0xA4, 0xF0); // 发送流
-        public static readonly Color Recv      = Color.FromArgb(0x7B, 0xD8, 0x8F); // 接收流
-        public static readonly Color Info      = Color.FromArgb(0x8A, 0x8D, 0xA6); // 状态流
+        public static readonly Color Bg        = Color.FromArgb(0x1C, 0x18, 0x12); // #1C1812 暖黑页面背景
+        public static readonly Color Surface   = Color.FromArgb(0x24, 0x1F, 0x16); // 面板
+        public static readonly Color Surface2  = Color.FromArgb(0x2E, 0x27, 0x1A); // 控件/选中
+        public static readonly Color Border    = Color.FromArgb(0x45, 0x3A, 0x24); // 暗金边框
+        public static readonly Color Gold      = Color.FromArgb(0xC3, 0xA5, 0x79); // #C3A579 香槟金（主色）
+        public static readonly Color GoldHi    = Color.FromArgb(0xD6, 0xBB, 0x92); // 金·悬停
+        public static readonly Color GoldDim   = Color.FromArgb(0x8A, 0x76, 0x54); // 金·弱化（下划线/分隔）
+        public static readonly Color Text      = Color.FromArgb(0xF2, 0xEE, 0xE4); // 暖白主文本
+        public static readonly Color Muted     = Color.FromArgb(0xA8, 0x9F, 0x8D); // 暖灰次级文本
+        public static readonly Color OnAccent  = Color.FromArgb(0x1C, 0x18, 0x12); // 金底上的深字
+        public static readonly Color Danger    = Color.FromArgb(0xA8, 0x5C, 0x50); // 砖红（断开/踢出）
+        public static readonly Color DangerHi  = Color.FromArgb(0xBC, 0x6E, 0x62);
+        public static readonly Color Ok        = Color.FromArgb(0xA8, 0xC6, 0x9A); // 鼠尾草绿·就绪
+        public static readonly Color LogBg     = Color.FromArgb(0x14, 0x11, 0x0C); // 日志终端底
+        public static readonly Color Sent      = Color.FromArgb(0xD6, 0xBB, 0x92); // 发送流·香槟金
+        public static readonly Color Recv      = Color.FromArgb(0xA8, 0xC6, 0x9A); // 接收流·鼠尾草
+        public static readonly Color Info      = Color.FromArgb(0x8D, 0x86, 0x7A); // 状态流·暖灰
 
         public static Button MkBtn(string text, int width, Color fill, Color hover)
         {
             var b = new Button
             {
                 Text = text, Width = width, Height = 30,
-                FlatStyle = FlatStyle.Flat, BackColor = fill, ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat, BackColor = fill,
+                ForeColor = fill == Danger ? Color.White : OnAccent,   // 金底深字更轻奢
                 Cursor = Cursors.Hand, UseVisualStyleBackColor = false
             };
             b.FlatAppearance.BorderSize = 0;
@@ -61,6 +66,7 @@ namespace TcpDebugAssistant
 
         // ---------- 服务端页 ----------
         private TcpServerController _server = new();
+        private ComboBox _srvHost;
         private TextBox _srvPort;
         private Button _srvListen;
         private Label _srvState;
@@ -82,7 +88,7 @@ namespace TcpDebugAssistant
         // ================================================================
         private void BuildUi()
         {
-            Text = "TCP 调试助手 · TcpDebugAssistant v1.2";
+            Text = "TCP 调试助手 · TcpDebugAssistant v1.4 轻奢版";
             Size = new Size(1080, 720);
             MinimumSize = new Size(860, 560);
             StartPosition = FormStartPosition.CenterScreen;
@@ -101,6 +107,7 @@ namespace TcpDebugAssistant
             _tabs.TabPages.Add(MakeClientTab());
             _tabs.TabPages.Add(MakeServerTab());
             _tabs.DrawItem += DrawTabItem;
+            _tabs.Paint += PaintTabBand;                // 填掉标签栏右侧/左侧的系统白底
             _tabs.SelectedIndexChanged += (s, e) => _tabs.Invalidate();
 
             _status = new StatusStrip
@@ -119,9 +126,37 @@ namespace TcpDebugAssistant
 
             Controls.Add(_tabs);
             Controls.Add(_status);
+            // 轻奢点缀：窗口顶端一条香槟金细线（后添加者先 Dock，位于最顶部）
+            var goldTrim = new Panel { Dock = DockStyle.Top, Height = 3, BackColor = Theme.GoldDim };
+            Controls.Add(goldTrim);
         }
 
-        /// <summary>Industrial/Utility 风格标签头：等宽留白 + 选中态主色下划线。</summary>
+        /// <summary>把标签栏中不属于任何页签的空白填成背景色（消除系统白底）。</summary>
+        private void PaintTabBand(object s, PaintEventArgs e)
+        {
+            var band = new Rectangle(0, 0, _tabs.ClientSize.Width, _tabs.ItemSize.Height + 6);
+            using (var rgn = new Region(band))
+            {
+                for (int i = 0; i < _tabs.TabPages.Count; i++) rgn.Exclude(_tabs.GetTabRect(i));
+                using (var b = new SolidBrush(Theme.Bg)) e.Graphics.FillRegion(b, rgn);
+            }
+        }
+
+        /// <summary>列宽自适应：撑满列表宽度，避免表头右侧留白。</summary>
+        private void FitColumns()
+        {
+            if (_clientList == null || _clientList.Columns.Count < 5) return;
+            int total = _clientList.ClientSize.Width - 4;
+            if (total < 320) return;
+            int fixedSum = 150 + 90 + 90 + 80;
+            _clientList.Columns[0].Width = Math.Max(160, total - fixedSum);
+            _clientList.Columns[1].Width = 150;
+            _clientList.Columns[2].Width = 90;
+            _clientList.Columns[3].Width = 90;
+            _clientList.Columns[4].Width = 80;
+        }
+
+        /// <summary>轻奢风标签头：选中态香槟金文字 + 金色下划线。</summary>
         private void DrawTabItem(object s, DrawItemEventArgs e)
         {
             var g = e.Graphics;
@@ -130,10 +165,10 @@ namespace TcpDebugAssistant
                 g.FillRectangle(bg, e.Bounds);
             var font = new Font("Microsoft YaHei UI", 10f, sel ? FontStyle.Bold : FontStyle.Regular);
             TextRenderer.DrawText(g, _tabs.TabPages[e.Index].Text, font, e.Bounds,
-                sel ? Theme.Text : Theme.Muted,
+                sel ? Theme.Gold : Theme.Muted,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             if (sel)
-                using (var bar = new SolidBrush(Theme.Primary))
+                using (var bar = new SolidBrush(Theme.Gold))
                     g.FillRectangle(bar, e.Bounds.X + 24, e.Bounds.Bottom - 3, e.Bounds.Width - 48, 3);
         }
 
@@ -164,7 +199,7 @@ namespace TcpDebugAssistant
             var lblAddr = new Label { Text = "服务器地址", AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(0, 5, 8, 0) };
             _cliHost = MkInput("127.0.0.1", 150); _cliHost.Margin = new Padding(0, 0, 8, 0);
             _cliPort = MkInput("9000", 70); _cliPort.Margin = new Padding(0, 0, 8, 0);
-            _cliConnect = Theme.MkBtn("连接", 90, Theme.Primary, Theme.PrimaryHi);
+            _cliConnect = Theme.MkBtn("连接", 90, Theme.Gold, Theme.GoldHi);
             _cliConnect.Margin = new Padding(0, 0, 14, 0);
             _cliState = new Label { Text = "● 未连接", AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(0, 5, 0, 0) };
             top.Controls.AddRange(new Control[] { lblAddr, _cliHost, _cliPort, _cliConnect, _cliState });
@@ -184,9 +219,18 @@ namespace TcpDebugAssistant
                 Dock = DockStyle.Top, Height = 48, WrapContents = false,
                 BackColor = Theme.Surface, Padding = new Padding(10, 11, 10, 0)
             };
-            var lblPort = new Label { Text = "监听端口", AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(0, 5, 8, 0) };
-            _srvPort = MkInput("9000", 80); _srvPort.Margin = new Padding(0, 0, 8, 0);
-            _srvListen = Theme.MkBtn("开始监听", 100, Theme.Primary, Theme.PrimaryHi);
+            var lblHost = new Label { Text = "监听地址", AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(0, 5, 8, 0) };
+            _srvHost = new ComboBox
+            {
+                Width = 140, DropDownStyle = ComboBoxStyle.DropDown, FlatStyle = FlatStyle.Flat,
+                BackColor = Theme.Surface2, ForeColor = Theme.Text, Margin = new Padding(0, 0, 10, 0)
+            };
+            _srvHost.Items.Add("0.0.0.0");                      // 全部网卡（默认）
+            foreach (var ip in LocalIPv4()) _srvHost.Items.Add(ip);
+            _srvHost.Text = "0.0.0.0";
+            var lblPort = new Label { Text = "端口", AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(0, 5, 8, 0) };
+            _srvPort = MkInput("9000", 70); _srvPort.Margin = new Padding(0, 0, 8, 0);
+            _srvListen = Theme.MkBtn("开始监听", 100, Theme.Gold, Theme.GoldHi);
             _srvListen.Margin = new Padding(0, 0, 14, 0);
             _srvState = new Label { Text = "● 未监听", AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(0, 5, 16, 0) };
             _srvSendAll = new CheckBox
@@ -195,7 +239,7 @@ namespace TcpDebugAssistant
                 ForeColor = Theme.Muted, Checked = true,     // 默认广播：避免「选了没反应」
                 Margin = new Padding(0, 5, 0, 0)
             };
-            top.Controls.AddRange(new Control[] { lblPort, _srvPort, _srvListen, _srvState, _srvSendAll });
+            top.Controls.AddRange(new Control[] { lblHost, _srvHost, lblPort, _srvPort, _srvListen, _srvState, _srvSendAll });
 
             // 客户端列表
             _clientList = new ListView
@@ -212,6 +256,8 @@ namespace TcpDebugAssistant
             _clientList.Columns.Add("状态", 80);
             _clientList.DrawColumnHeader += DrawListHeader;
             _clientList.DrawSubItem += (s, e) => e.DrawDefault = true;
+            _clientList.Resize += (s, e) => FitColumns();
+            _clientList.HandleCreated += (s, e) => FitColumns();
 
             var kick = Theme.MkBtn("断开选中客户端", 130, Theme.Danger, Theme.DangerHi);
             kick.Left = 8;
@@ -301,7 +347,7 @@ namespace TcpDebugAssistant
                 BackColor = Theme.Surface2, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle
             };
             AddLabel(w.SendRow, "次(0=∞)", 565, 11, Theme.Muted);
-            w.BtnSend = Theme.MkBtn("发送", 90, Theme.Primary, Theme.PrimaryHi);
+            w.BtnSend = Theme.MkBtn("发送", 90, Theme.Gold, Theme.GoldHi);
             w.BtnSend.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             w.SendRow.Controls.AddRange(new Control[] { w.RbAscii, w.RbHex, w.CmbEnc, w.ChkAuto, w.NumInterval, lblMs, w.NumTimes, w.BtnSend });
             w.SendRow.Resize += (s, e) => { w.BtnSend.Left = w.SendRow.Width - 100; };
@@ -370,7 +416,7 @@ namespace TcpDebugAssistant
                 _cliState.Text = _client.IsConnected ? "● 已连接 " + _client.Remote : "● 未连接";
                 _cliState.ForeColor = _client.IsConnected ? Theme.Ok : Theme.Muted;
                 _cliConnect.Text = _client.IsConnected ? "断开" : "连接";
-                _cliConnect.BackColor = _client.IsConnected ? Theme.Danger : Theme.Primary;
+                _cliConnect.BackColor = _client.IsConnected ? Theme.Danger : Theme.Gold;
                 if (_client.IsConnected) SetUiBusy(_cliConnect, "断开");
             });
             SetupSendArea(_cliPage, async bytes =>
@@ -387,10 +433,23 @@ namespace TcpDebugAssistant
             {
                 if (!_server.IsListening)
                 {
+                    var hostText = _srvHost.Text.Trim();
+                    if (hostText.Contains('(')) hostText = hostText.Substring(0, hostText.IndexOf('(')).Trim();  // 容忍 "0.0.0.0 (全部网卡)"
+                    if (hostText.Length == 0) hostText = "0.0.0.0";
+
+                    if (!IPAddress.TryParse(hostText, out var bindAddr))
+                    { SetStatus($"监听地址「{hostText}」不是合法 IP（示例：0.0.0.0 / 192.168.1.10）", true); _srvHost.Focus(); return; }
                     if (!int.TryParse(_srvPort.Text.Trim(), out var port) || port < 1 || port > 65535)
                     { SetStatus("端口无效（1-65535）", true); return; }
+
+                    bool isLocal = bindAddr.Equals(IPAddress.Any) || IPAddress.IsLoopback(bindAddr)
+                                   || LocalIPv4().Contains(bindAddr.ToString());
+                    if (!isLocal)
+                    { SetStatus($"{hostText} 不是本机网卡地址，绑定会失败（可用地址：{string.Join(" / ", LocalIPv4())}）", true); }
+
                     SetUiBusy(_srvListen, "停止监听");
-                    await _server.StartAsync(port);
+                    bool ok = await _server.StartAsync(bindAddr, port);
+                    if (!ok) SetUiBusy(_srvListen, "开始监听");
                 }
                 else
                 {
@@ -493,7 +552,7 @@ namespace TcpDebugAssistant
         private void OnNetState(PageWidgets w, StateEventArgs e)
         {
             SetStatus(e.Message, e.IsError);
-            var color = e.IsError ? Theme.Warn : Theme.Info;
+            var color = e.IsError ? Theme.Danger : Theme.Info;
             w.Entries.Add(new LogEntry { Time = e.Time, Sent = true, IsInfo = true, Text = e.Message });
             AppendEntry(w, w.Entries[w.Entries.Count - 1], color);
         }
@@ -577,16 +636,44 @@ namespace TcpDebugAssistant
                     it.SubItems[3].Text = cs.SentBytes.ToString();
                 }
             }
-            _srvState.Text = _server.IsListening ? $"● 监听中 · {_server.Sessions.Count} 个客户端" : "● 未监听";
+            _srvState.Text = _server.IsListening
+                ? $"● 监听中 · {_server.ListeningEndpoint} · {_server.Sessions.Count} 个客户端"
+                : "● 未监听";
             _srvState.ForeColor = _server.IsListening ? Theme.Ok : Theme.Muted;
             _srvListen.Text = _server.IsListening ? "停止监听" : "开始监听";
-            _srvListen.BackColor = _server.IsListening ? Theme.Danger : Theme.Primary;
+            _srvListen.BackColor = _server.IsListening ? Theme.Danger : Theme.Gold;
+            _srvListen.ForeColor = _server.IsListening ? Color.White : Theme.OnAccent;
+            _srvHost.Enabled = !_server.IsListening;    // 监听中锁定地址，避免误解
+            _srvPort.ReadOnly = _server.IsListening;
+        }
+
+        /// <summary>枚举本机 IPv4 地址（用于监听地址候选）。</summary>
+        internal static List<string> LocalIPv4()
+        {
+            var list = new List<string>();
+            try
+            {
+                foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                    foreach (var ua in ni.GetIPProperties().UnicastAddresses)
+                    {
+                        if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                        if (IPAddress.IsLoopback(ua.Address)) continue;
+                        var ip = ua.Address.ToString();
+                        if (!list.Contains(ip)) list.Add(ip);
+                    }
+                }
+            }
+            catch { }
+            return list;
         }
 
         private void SetStatus(string msg, bool err)
         {
             _statusLabel.Text = $"{DateTime.Now:HH:mm:ss}  {msg}";
-            _statusLabel.ForeColor = err ? Theme.Warn : Theme.Muted;
+            _statusLabel.ForeColor = err ? Theme.DangerHi : Theme.Muted;
         }
 
         private static void SetUiBusy(Button b, string text) { b.Text = text; }
